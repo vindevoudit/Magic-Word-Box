@@ -1,0 +1,70 @@
+/*
+ * Design tokens.
+ *
+ * The palette is functional rather than decorative. --p0..--p4 is a single
+ * perceptual ramp standing for one quantity that the whole site is about:
+ * magnitude from 0 to 1. Attention weight, token probability and gradient size
+ * all read on the same scale, so a bright cell means the same thing everywhere.
+ *
+ * --signal is rationed to exactly one meaning: this is happening now.
+ */
+
+:root {
+  --ink: #0e1420;
+  --ink-deep: #0a0f18;
+  --panel: #161e2e;
+  --panel-hi: #1c2537;
+  --rule: #27334a;
+  --rule-soft: #1e2739;
+  --chalk: #e8edf7;
+  --muted: #8a9ab8;
+  --muted-dim: #5f6f8c;
+
+  --p0: #1b2a4a;
+  --p1: #2c6e9b;
+  --p2: #2fa8a0;
+  --p3: #8fd16a;
+  --p4: #f2c744;
+
+  --signal: #ff6b4a;
+  --signal-dim: #a8402c;
+
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui,
+    sans-serif;
+  --font-body: 'Public Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --step-hero: clamp(3rem, 9vw, 7rem);
+  --step-title: clamp(2rem, 4vw, 3.25rem);
+  --step-lede: clamp(1.05rem, 1.6vw, 1.25rem);
+  --step-body: 1.0625rem;
+  --step-cell: 0.8125rem;
+  --step-eyebrow: 0.75rem;
+
+  --gap-xs: 0.375rem;
+  --gap-s: 0.75rem;
+  --gap-m: 1.25rem;
+  --gap-l: 2rem;
+  --gap-xl: 4rem;
+  --gap-xxl: 7rem;
+
+  --rail-w: 15rem;
+  --measure: 34rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 180ms;
+  --dur-mid: 420ms;
+  --dur-slow: 900ms;
+
+  --radius: 6px;
+  --radius-lg: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-mid: 1ms;
+    --dur-slow: 1ms;
+  }
+}

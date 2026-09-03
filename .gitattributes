@@ -1,0 +1,7 @@
+# Normalise to LF in the repository. Authored on Windows, built on Linux at
+# Render, so pinning this avoids checksum churn and stray CRLF in the build.
+* text=auto eol=lf
+
+*.png binary
+*.woff binary
+*.woff2 binary
