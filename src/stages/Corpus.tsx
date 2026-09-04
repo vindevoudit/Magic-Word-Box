@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { Panel, Stage, Stat } from './Stage'
 import { useStore } from '../state/store'
 import { CORPORA } from '../data/corpora'
-import { tokenize } from '../model/tokenizer'
-import { LIMITS } from '../model/presets'
+import { buildVocab, tokenize } from '../model/tokenizer'
+import { LIMITS, VOCAB_CEILING } from '../model/presets'
 
 /**
  * Stage 2. Where the reader supplies the only thing the model will ever know.
@@ -20,7 +20,14 @@ export function Corpus() {
     const words = toks.filter((t) => t !== '<br>')
     const unique = new Set(words)
     const repetition = words.length / Math.max(1, unique.size)
+    // Coverage is the number that actually predicts whether generation will be
+    // readable. Anything outside the vocabulary becomes <unk>, and <unk> is a
+    // word the model can never say back.
+    const vocab = buildVocab(toks, VOCAB_CEILING)
+    const unkPct = (vocab.unkOccurrences / Math.max(1, toks.length)) * 100
     return {
+      vocabSize: vocab.tokens.length,
+      unkPct,
       chars: corpus.length,
       words: words.length,
       unique: unique.size,
@@ -30,7 +37,9 @@ export function Corpus() {
   }, [corpus])
 
   const tooShort = stats.words < LIMITS.minCorpusWords
-  const thin = !tooShort && stats.repetition < 2.2
+  const lossy = !tooShort && stats.unkPct > 2
+  const thin = !tooShort && !lossy && stats.repetition < 2.2
+  const slow = stats.vocabSize > 1200
 
   return (
     <Stage
@@ -82,6 +91,11 @@ export function Corpus() {
             value={`${stats.repetition.toFixed(1)}x`}
             sub="times the average word recurs"
           />
+          <Stat
+            label="vocabulary"
+            value={stats.vocabSize}
+            sub={`covers ${(100 - stats.unkPct).toFixed(1)}% of the text`}
+          />
         </div>
 
         {tooShort ? (
@@ -89,6 +103,14 @@ export function Corpus() {
             That is {stats.words} words. Below about {LIMITS.minCorpusWords} there is
             not enough signal for the model to find any pattern &mdash; try one of the
             presets above, or paste more.
+          </p>
+        ) : lossy ? (
+          <p className="notice notice--warn">
+            This text uses {stats.unique.toLocaleString()} different words, more than
+            the {VOCAB_CEILING.toLocaleString()}-word limit, so{' '}
+            <b>{stats.unkPct.toFixed(0)}% of it</b> becomes an unknown token the
+            model can never say back. Trim it to a few thousand words, or pick a
+            passage that reuses its vocabulary.
           </p>
         ) : thin ? (
           <p className="notice">
@@ -102,6 +124,15 @@ export function Corpus() {
             {stats.repetition.toFixed(1)} times, so there are patterns to find.
           </p>
         )}
+
+        {slow && !tooShort ? (
+          <p className="notice">
+            A {stats.vocabSize.toLocaleString()}-word vocabulary makes the model
+            several times larger, since it has to score every one of those words at
+            every position. Training will take noticeably longer than the few
+            seconds the presets quote.
+          </p>
+        ) : null}
       </Panel>
     </Stage>
   )

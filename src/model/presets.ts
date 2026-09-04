@@ -20,6 +20,22 @@ export interface Preset {
   maxVocab: number
 }
 
+/**
+ * Largest vocabulary any preset will build.
+ *
+ * This is a ceiling, not a target: the built-in poems produce about 46 tokens
+ * and are unaffected. It matters for pasted prose, where the previous limit of
+ * 600 pushed roughly one word in nine into <unk> - enough to make <unk> the
+ * second most frequent token in the corpus, and so the model's best guess
+ * almost everywhere.
+ *
+ * The cost is real and roughly linear: the token embedding and the output head
+ * are both [vocab, width], so a 2700-word vocabulary is around 20 seconds of
+ * training rather than four. The training stage shows a live estimate rather
+ * than hiding that.
+ */
+export const VOCAB_CEILING = 4000
+
 export const PRESETS: Preset[] = [
   {
     id: 'quick',
@@ -32,7 +48,7 @@ export const PRESETS: Preset[] = [
     batchSize: 16,
     steps: 400,
     lr: 4e-3,
-    maxVocab: 600,
+    maxVocab: VOCAB_CEILING,
   },
   {
     id: 'standard',
@@ -45,7 +61,7 @@ export const PRESETS: Preset[] = [
     batchSize: 16,
     steps: 800,
     lr: 3e-3,
-    maxVocab: 600,
+    maxVocab: VOCAB_CEILING,
   },
   {
     id: 'big',
@@ -58,7 +74,7 @@ export const PRESETS: Preset[] = [
     batchSize: 16,
     steps: 1200,
     lr: 2.5e-3,
-    maxVocab: 600,
+    maxVocab: VOCAB_CEILING,
   },
 ]
 

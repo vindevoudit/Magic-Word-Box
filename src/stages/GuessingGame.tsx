@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { useInference } from '../state/useInference'
 import { ProbBars } from '../viz/ProbBars'
 import { encodePrompt } from '../model/tokenizer'
+import { suppressSpecials } from '../model/model'
 
 // Chosen because the shipped model genuinely splits three ways here
 // (bird / lamp / boat, all near a third). A prompt it answers with 99%
@@ -21,7 +22,8 @@ export function GuessingGame() {
   const [submitted, setSubmitted] = useState(false)
 
   const ids = vocab ? encodePrompt(PROMPT, vocab) : []
-  const { probs, labels } = useInference(ids)
+  const { probs: raw, labels } = useInference(ids)
+  const probs = raw ? suppressSpecials(raw) : null
   void labels
 
   const guessId = vocab && guess ? (vocab.ids.get(guess.trim().toLowerCase()) ?? -1) : -1

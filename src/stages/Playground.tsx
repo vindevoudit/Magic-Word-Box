@@ -3,7 +3,7 @@ import { Panel, Stage } from './Stage'
 import { useStore } from '../state/store'
 import { useInference } from '../state/useInference'
 import { ProbBars } from '../viz/ProbBars'
-import { applyTemperature, sampleFrom } from '../model/model'
+import { applyTemperature, sampleFrom, suppressSpecials } from '../model/model'
 import { decode } from '../model/tokenizer'
 import { mulberry32 } from '../model/tensor'
 
@@ -22,7 +22,7 @@ export function Playground() {
 
   const ids = [...promptIds, ...committed]
   const { probs } = useInference(ids)
-  const shaped = probs ? applyTemperature(probs, temperature) : null
+  const shaped = probs ? applyTemperature(suppressSpecials(probs), temperature) : null
 
   const commit = (id: number) => {
     setCommitted((c) => [...c, id])
@@ -35,7 +35,7 @@ export function Playground() {
     let seq = [...ids]
     const added: number[] = []
     for (let i = 0; i < 12; i++) {
-      const p = model.predictNext(seq).probs
+      const p = suppressSpecials(model.predictNext(seq).probs)
       const next = sampleFrom(applyTemperature(p, temperature), rng, 12)
       seq = [...seq, next]
       added.push(next)

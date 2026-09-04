@@ -6,8 +6,9 @@
  * triangle leaked, the pictures would be wrong and so would the teaching.
  */
 
+import { BOS, UNK } from '../src/model/tokenizer'
 import { describe, expect, it } from 'vitest'
-import { TinyTransformer } from '../src/model/model'
+import { TinyTransformer, generate, suppressSpecials } from '../src/model/model'
 import { mulberry32 } from '../src/model/tensor'
 
 function model(nHeads = 2, nLayers = 2, dModel = 8, contextLength = 6) {
@@ -171,5 +172,63 @@ describe('attention weights', () => {
       maxDiff = Math.max(maxDiff, Math.abs(offA[i] - offB[i]))
     }
     expect(maxDiff).toBeGreaterThan(1e-6)
+  })
+})
+
+describe('special-token suppression', () => {
+  it('never emits <unk> or <start>, even when they dominate the distribution', () => {
+    // The failure this guards against: on open-vocabulary prose, <unk> becomes
+    // one of the most frequent tokens in the corpus, so the trained model
+    // correctly makes it the top prediction almost everywhere and generation
+    // collapses into a wall of "<unk> <unk> <unk>".
+    const probs = new Float32Array(8)
+    probs[BOS] = 0.5
+    probs[UNK] = 0.4
+    probs[5] = 0.06
+    probs[6] = 0.04
+
+    const out = suppressSpecials(probs)
+    expect(out[BOS]).toBe(0)
+    expect(out[UNK]).toBe(0)
+
+    let sum = 0
+    for (let i = 0; i < out.length; i++) sum += out[i]
+    expect(sum).toBeCloseTo(1, 6)
+    // The surviving tokens keep their relative ordering and ratio.
+    expect(out[5]).toBeCloseTo(0.6, 5)
+    expect(out[6]).toBeCloseTo(0.4, 5)
+  })
+
+  it('falls back to a uniform choice when all mass was on suppressed tokens', () => {
+    const probs = new Float32Array(5)
+    probs[BOS] = 0.7
+    probs[UNK] = 0.3
+
+    const out = suppressSpecials(probs)
+    expect(out[BOS]).toBe(0)
+    expect(out[UNK]).toBe(0)
+    let sum = 0
+    for (let i = 0; i < out.length; i++) {
+      expect(Number.isFinite(out[i])).toBe(true)
+      sum += out[i]
+    }
+    expect(sum).toBeCloseTo(1, 6)
+  })
+
+  it('generate() never produces a suppressed token', () => {
+    const m = model(2, 1, 8, 4)
+    // Bias the model hard toward <unk> by inflating its output-head column.
+    const d = m.cfg.dModel
+    const V = m.cfg.vocabSize
+    for (let i = 0; i < d; i++) m.head.data[i * V + UNK] = 50
+    m.headB.data[UNK] = 50
+
+    const out = generate(m, [4], {
+      maxTokens: 30,
+      temperature: 1,
+      topK: 0,
+      rng: mulberry32(3),
+    })
+    expect(out.slice(1).some((id) => id === UNK || id === BOS)).toBe(false)
   })
 })

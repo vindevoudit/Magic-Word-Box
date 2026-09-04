@@ -1091,6 +1091,11 @@ button.probbar:hover {
   background: var(--signal);
   transition: width 200ms linear;
 }
+.trainbar__eta {
+  font-size: 0.8125rem;
+  color: var(--muted-dim);
+  white-space: nowrap;
+}
 .trainbar__pct {
   font-size: 0.8125rem;
   color: var(--muted);

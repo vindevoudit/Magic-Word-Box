@@ -18,6 +18,14 @@ export function Training() {
     ? Math.round((training.step / training.totalSteps) * 100)
     : 0
 
+  // Measured rather than predicted. How long training takes depends on the
+  // vocabulary the visitor's own text produced and on their machine, so a
+  // constant fitted here would be wrong on both counts.
+  const remaining =
+    busy && training.stepsPerSecond > 0
+      ? (training.totalSteps - training.step) / training.stepsPerSecond
+      : null
+
   return (
     <Stage
       id="training"
@@ -65,6 +73,13 @@ export function Training() {
             <span style={{ width: `${pct}%` }} />
           </div>
           <span className="mono trainbar__pct">{pct}%</span>
+          {remaining != null && remaining > 1 ? (
+            <span className="mono trainbar__eta">
+              {remaining < 60
+                ? `~${Math.ceil(remaining)}s left`
+                : `~${Math.ceil(remaining / 60)} min left`}
+            </span>
+          ) : null}
         </div>
 
         {training.error ? (

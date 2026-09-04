@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../state/store'
-import { applyTemperature, sampleFrom, topK } from '../model/model'
+import { applyTemperature, sampleFrom, suppressSpecials, topK } from '../model/model'
 import { mulberry32 } from '../model/tensor'
 import { prefersReducedMotion } from '../viz/useTween'
 
@@ -31,7 +31,8 @@ export function Hero() {
     const still = prefersReducedMotion()
 
     const stepOnce = () => {
-      const { probs } = model.predictNext(ids)
+      const { probs: raw } = model.predictNext(ids)
+      const probs = suppressSpecials(raw)
       const shaped = applyTemperature(probs, 0.75)
       const next = sampleFrom(shaped, rng, 8)
       const alts = topK(probs, 3)

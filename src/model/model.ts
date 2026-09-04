@@ -35,7 +35,7 @@ import {
   randn,
   sumRows_acc,
 } from './tensor'
-import { BOS } from './tokenizer'
+import { BOS, UNK } from './tokenizer'
 
 export interface ModelConfig {
   vocabSize: number
@@ -551,6 +551,41 @@ export function applyTemperature(probs: Float32Array, temperature: number): Floa
   return out
 }
 
+/**
+ * Zero out tokens the model should never say out loud, and renormalise.
+ *
+ * <unk> stands for "some rare word that did not make the vocabulary". It is an
+ * input-side device: it lets the model read text containing words it does not
+ * know. Asking it to *emit* <unk> is asking for a word that, by definition, it
+ * cannot name.
+ *
+ * This matters more than it sounds. On open-vocabulary prose a large share of
+ * tokens collapse into <unk>, which makes <unk> one of the most frequent tokens
+ * in the corpus - so the model quite correctly learns that it is the single
+ * best guess almost everywhere, and generation becomes a wall of <unk>. The
+ * model is not broken when that happens; it is answering the question it was
+ * asked. Suppressing these at sampling time asks the better question.
+ *
+ * <start> is suppressed for the same reason: it marks the beginning of the
+ * text and means nothing in the middle of it.
+ */
+export function suppressSpecials(probs: Float32Array): Float32Array {
+  const out = Float32Array.from(probs)
+  out[BOS] = 0
+  out[UNK] = 0
+  let sum = 0
+  for (let i = 0; i < out.length; i++) sum += out[i]
+  if (sum <= 0) {
+    // Degenerate case: the model put all its mass on suppressed tokens. Fall
+    // back to a uniform choice over everything else rather than returning NaN.
+    const n = Math.max(1, out.length - 2)
+    for (let i = 0; i < out.length; i++) out[i] = i === BOS || i === UNK ? 0 : 1 / n
+    return out
+  }
+  for (let i = 0; i < out.length; i++) out[i] /= sum
+  return out
+}
+
 /** Indices of the k highest-probability tokens, descending. */
 export function topK(probs: Float32Array, k: number): number[] {
   const idx = Array.from({ length: probs.length }, (_, i) => i)
@@ -596,7 +631,7 @@ export function generate(
   const out = [...promptIds]
   for (let i = 0; i < opts.maxTokens; i++) {
     const { probs } = model.predictNext(out)
-    const shaped = applyTemperature(probs, opts.temperature)
+    const shaped = applyTemperature(suppressSpecials(probs), opts.temperature)
     const next = sampleFrom(shaped, opts.rng, opts.topK)
     out.push(next)
   }
